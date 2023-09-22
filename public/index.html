@@ -1,0 +1,160 @@
+  <!DOCTYPE html>
+<html>
+<head>
+    <title>Video Playback and JSON</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <input type="text" id="videoUrlInput" placeholder="Enter Video URL">
+    <button id="loadVideoButton">Load Video</button>
+    <button onclick="setPlaybackTimeAndState();">Refresh</button>
+    
+    <video id="myVideo" width="100%" height="240" controls>
+        <source src="" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <script>
+        $(document).ready(function() {
+            var video = $("#myVideo")[0]; 
+            var videoUrlInput = $("#videoUrlInput");
+            var loadVideoButton = $("#loadVideoButton");
+            var previousPlaybackTime = 0;
+            var previousPausedState = false;
+
+            
+        $(document).ready(function() {
+            setTimeout(function() {
+               $.ajax({
+                    url: '/readData',
+                    dataType: 'json',
+                    success: function(data) {
+                        debugger;
+                        var currentTime = data.playbackTime || 0;
+                        var isPaused = data.isPaused || false;
+                        var storedUrl = data.videoUrl || '';
+                        if (true) {
+                            video.currentTime = currentTime;
+                            previousPlaybackTime = currentTime;
+                            video.src = storedUrl;
+                        }
+                    },
+                    error: function(error) {
+                        console.error('Error:', error);
+                    }
+                });
+            }, 500);  
+        });
+   
+            setPlaybackTimeAndState();
+    
+
+            function setPlaybackTimeAndState() {
+                $.ajax({
+                    url: '/readData',
+                    dataType: 'json',
+                    success: function(data) {
+                        var currentTime = data.playbackTime || 0;
+                        var isPaused = data.isPaused || false;
+                        var storedUrl = data.videoUrl || '';
+                        $("#videoUrlInput").val(storedUrl);
+
+                        if (storedUrl && storedUrl === video.currentSrc) {
+                            
+                            if (!isPaused) {
+                                video.play();  
+                            }
+                        }
+                       if (currentTime !== previousPlaybackTime) {
+                            video.currentTime = currentTime;
+                            previousPlaybackTime = currentTime;
+                        }
+
+                        previousPausedState = isPaused;
+                    },
+                    error: function(error) {
+                        console.error('Error:', error);
+                    }
+                });
+            }
+
+            
+
+            video.addEventListener("play", function () {
+                setInterval(setPlaybackTimeAndState, 1000);
+            });
+
+
+            video.addEventListener("pause", function () {
+                var currentTime = video.currentTime;
+                var videoUrl = videoUrlInput.val();
+                var data = {
+                    videoUrl: videoUrl,
+                    playbackTime: currentTime,
+                    isPaused: true
+                };
+                $.ajax({
+                    url: '/saveData',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function() {
+                        console.log('Video Paused!');
+                    },
+                    error: function(error) {
+                        console.error('Error:', error);
+                    }
+                });
+            });
+
+            video.addEventListener("seeked", function () {
+                var currentTime = video.currentTime;
+                var videoUrl = videoUrlInput.val();
+                var data = {
+                    videoUrl: videoUrl,
+                    playbackTime: currentTime,
+                    isPaused: false
+                };
+              $.ajax({
+                    url: '/saveData',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function() {
+                        console.log('Video Seeked..');
+                    },
+                    error: function(error) {
+                        console.error('Error:', error);
+                    }
+                });
+            });
+
+            loadVideoButton.click(function () {
+                var videoUrl = videoUrlInput.val();
+                if (videoUrl) {
+                    var data = {
+                        videoUrl: videoUrl,
+                        playbackTime: 0,
+                        isPaused: false
+                    };
+                    $.ajax({
+                        url: '/saveData',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(data),
+                        success: function() {
+                            console.log('Video URL saved.' + videoUrl);
+                             video.src = videoUrl;
+                            video.load(); 
+                            video.play(); 
+                        },
+                        error: function(error) {
+                            console.error('Error:', error);
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
